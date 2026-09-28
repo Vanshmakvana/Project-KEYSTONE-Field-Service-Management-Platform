@@ -1,0 +1,57 @@
+# ══════════════════════════════════════════════════════
+#  Project KEYSTONE — Application Configuration
+# ══════════════════════════════════════════════════════
+
+spring:
+  application:
+    name: keystone-backend
+
+  # ── DataSource ──
+  datasource:
+    url: jdbc:postgresql://localhost:5432/keystone_db
+    username: keystone
+    password: keystone_secret
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+
+  # ── JPA / Hibernate ──
+  jpa:
+    hibernate:
+      ddl-auto: validate          # Flyway manages the schema
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+
+  # ── Flyway ──
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+# ── JWT Configuration ──
+app:
+  jwt:
+    secret: S3cur3K3yst0n3JWTSign1ngK3y!2026@HMAC512#ProdReady
+    expiration-ms: 86400000       # 24 hours
+
+# ── Server ──
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# ── OpenAPI / Swagger ──
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha

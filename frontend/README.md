@@ -1,86 +1,120 @@
-# KEYSTONE — Field Service Management Platform (Frontend)
+# KEYSTONE backend — React frontend ready
 
-A complete React + Vite frontend for a commercial field-service management
-SaaS product: work orders, service requests, technicians, scheduling,
-customers, inventory, reports, and settings — built on realistic mock data
-and structured to connect to a Spring Boot REST API later with no rewrites.
+This backend is prepared specifically for the supplied `keystone-frontend`
+project.  Its API returns the same field names as the frontend mock data, so
+the React pages work without rewriting their service modules.
 
-## Getting started
+## What it includes
 
-```bash
+- JWT login returning `{ token, user }`, as required by `AuthContext.jsx`
+- CORS for `http://localhost:5173`
+- CRUD APIs for work orders, customers, inventory, and service requests
+- Read API for technicians
+- A frontend-shaped report summary
+- PostgreSQL/Flyway schema and sample data
+
+## Requirements
+
+- Java **21** (not Java 8)
+- Apache Maven 3.9+
+- PostgreSQL 15+ running locally
+
+There is intentionally no Maven wrapper in this project, so Maven must be
+installed and available as `mvn`.
+
+## 1. Create the database
+
+In pgAdmin's Query Tool, connected as the PostgreSQL administrator, run:
+
+```sql
+CREATE USER keystone WITH PASSWORD 'keystone_secret';
+CREATE DATABASE keystone_db OWNER keystone;
+```
+
+If the user/database already exists, keep it and use the credentials in
+`src/main/resources/application.yml` instead. Flyway creates the tables and
+sample data the first time the backend starts.
+
+## 2. Start the backend
+
+From this folder:
+
+```powershell
+mvn spring-boot:run
+```
+
+Wait until the console says the application started. The API is then running
+at `http://localhost:8080/api`; Swagger is at
+`http://localhost:8080/swagger-ui.html`.
+
+## 3. Connect the supplied frontend
+
+In the root of the frontend project, create a file called `.env` with exactly:
+
+```env
+VITE_API_BASE_URL=http://localhost:8080/api
+VITE_USE_REAL_API=true
+```
+
+Then start the frontend in a separate terminal:
+
+```powershell
 npm install
 npm run dev
 ```
 
-Open the printed local URL (typically `http://localhost:5173`) and sign in
-with the demo credentials shown on the login screen:
+Open `http://localhost:5173`. Restart Vite after creating or changing `.env`.
 
-```
-Email:    admin@keystone.com
-Password: admin123
-```
+## Login account
 
-## Project structure
+Use this manager account (it can use every supplied page, including Reports):
 
-```
-src/
-  components/
-    layout/       Sidebar, Header, AppLayout, ProtectedRoute
-    ui/            Reusable Modal, Drawer
-    common/        PageHeader, FilterBar, Pagination, RowActions,
-                    ConfirmDialog, EmptyState, StatusBadge
-    dashboard/     KPI cards, trend chart, status donut, SLA monitor,
-                    activity feed
-    workorders/    Work order drawer + create/edit modal
-  pages/           One file per route (Dashboard, WorkOrders, ...)
-  services/        api.js (central request/config), createResourceService.js
-                    (generic CRUD factory), plus one module per resource
-  context/         AuthContext, ThemeContext, ToastContext
-  hooks/           useLiveClock, useCountdown, useDebounce, useAnimatedNumber
-  data/            mockData.js — realistic seed data for every resource
-  styles/          theme.css (design tokens) + global.css
+```text
+Email: manager@keystone.io
+Password: password
 ```
 
-## Connecting the Spring Boot backend
+All development seed accounts use the same password: `password`.
 
-Every data call in the app goes through `src/services/`. Right now
-`VITE_USE_REAL_API` is unset (defaults to `false`), so each service reads
-and writes an in-memory copy of the mock data in `src/data/mockData.js`,
-with a short simulated delay so loading states behave honestly.
+## API paths
 
-To switch to your real API:
+All protected paths need the JWT automatically attached by the supplied
+frontend's `src/services/api.js`.
 
-1. Copy `.env.example` to `.env` and set:
-   ```
-   VITE_API_BASE_URL=https://your-api-host/api
-   VITE_USE_REAL_API=true
-   ```
-2. That's it for reads/writes — `createResourceService.js` already calls
-   the matching REST verbs (`GET/POST/PUT/DELETE /api/<resource>`) once
-   `USE_REAL_API` is true. No component code changes.
-3. For auth, `authService.js` has a `loginReal()` function already wired
-   to `POST /api/auth/login`. It expects `{ token, user }` back and stores
-   the JWT via `setToken()` in `src/services/api.js`. `api.js` already
-   attaches `Authorization: Bearer <token>` to every request once a token
-   is stored.
-4. Expected REST endpoints (adjust paths in `createResourceService.js`
-   calls if your backend differs):
-   - `POST /api/auth/login`
-   - `GET/POST /api/work-orders`, `PUT/DELETE /api/work-orders/{id}`
-   - `GET/POST /api/service-requests`, `PUT/DELETE /api/service-requests/{id}`
-   - `GET/POST /api/technicians`, `PUT/DELETE /api/technicians/{id}`
-   - `GET/POST /api/customers`, `PUT/DELETE /api/customers/{id}`
-   - `GET/POST /api/inventory`, `PUT/DELETE /api/inventory/{id}`
-   - `GET /api/reports/summary`
+```text
+POST   /api/auth/login
+GET    /api/work-orders
+GET    /api/work-orders/{workOrderCode}
+POST   /api/work-orders
+PUT    /api/work-orders/{workOrderCode}
+DELETE /api/work-orders/{workOrderCode}
 
-## Notes
+GET    /api/customers
+POST   /api/customers
+PUT    /api/customers/{customerId}
+DELETE /api/customers/{customerId}
 
-- Theme (dark/light), sidebar collapsed state, and settings preferences
-  persist to `localStorage`.
-- The CSV export on the Reports page generates a real file client-side
-  from the current mock work order data.
-- This build was assembled and syntax-checked in a sandboxed environment
-  without npm registry access, so dependencies could not be installed or
-  `vite build` run here. Relative imports and JSX brace/paren balance were
-  verified programmatically across all 50 source files. Run `npm install`
-  locally to pull dependencies and do a final check with `npm run build`.
+GET    /api/inventory
+POST   /api/inventory
+PUT    /api/inventory/{partId}
+DELETE /api/inventory/{partId}
+
+GET    /api/service-requests
+POST   /api/service-requests
+PUT    /api/service-requests/{requestCode}
+DELETE /api/service-requests/{requestCode}
+
+GET    /api/technicians
+GET    /api/reports/summary
+```
+
+The Schedule screen, dashboard activity feed, global search, CSV export, and
+charts are still deliberately local frontend features because that React app
+does not call an API for them. All pages that use `src/services/` are backed by
+this project.
+
+## Development note
+
+The CORS origin is deliberately restricted to Vite's local port. Before
+deploying, replace `http://localhost:5173` in `SecurityConfig.java` with the
+real frontend address and move database/JWT secrets into environment variables.
